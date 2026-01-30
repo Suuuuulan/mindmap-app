@@ -194,12 +194,12 @@ const handleExport = async (type: 'json' | 'png' | 'pdf') => {
       break;
     case 'png':
       if (canvasRef.value?.$el) {
-        await exportToPNG(canvasRef.value.$el as HTMLElement);
+        await exportToPNG(canvasRef.value.$el as HTMLElement, root.value);
       }
       break;
     case 'pdf':
       if (canvasRef.value?.$el) {
-        await exportToPDF(canvasRef.value.$el as HTMLElement);
+        await exportToPDF(canvasRef.value.$el as HTMLElement, root.value);
       }
       break;
   }

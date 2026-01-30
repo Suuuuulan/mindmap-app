@@ -3,6 +3,45 @@ import { jsPDF } from 'jspdf';
 import type { MindMapNode, ExportData } from '@/types';
 
 export function useExport() {
+  // 计算节点边界框
+  const calculateNodeBounds = (root: MindMapNode) => {
+    const padding = 100; // 边距
+    
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    
+    const traverse = (node: MindMapNode) => {
+      const left = node.x - node.width / 2;
+      const right = node.x + node.width / 2;
+      const top = node.y - node.height / 2;
+      const bottom = node.y + node.height / 2;
+      
+      minX = Math.min(minX, left);
+      maxX = Math.max(maxX, right);
+      minY = Math.min(minY, top);
+      maxY = Math.max(maxY, bottom);
+      
+      if (!node.collapsed) {
+        node.children.forEach(traverse);
+      }
+    };
+    
+    traverse(root);
+    
+    return {
+      minX,
+      maxX,
+      minY,
+      maxY,
+      x: minX - padding,
+      y: minY - padding,
+      width: maxX - minX + padding * 2,
+      height: maxY - minY + padding * 2,
+    };
+  };
+
   // 导出为JSON
   const exportToJSON = (data: ExportData, filename: string = 'mindmap') => {
     try {
@@ -31,46 +70,59 @@ export function useExport() {
   };
 
   // 导出为PNG
-  const exportToPNG = async (element: HTMLElement, filename: string = 'mindmap') => {
+  const exportToPNG = async (element: HTMLElement, root: MindMapNode, filename: string = 'mindmap') => {
     try {
+      // 计算节点边界
+      const bounds = calculateNodeBounds(root);
+      
       // 临时隐藏不需要导出的元素
       const noExportElements = element.querySelectorAll('.no-export');
       noExportElements.forEach(el => {
         (el as HTMLElement).style.visibility = 'hidden';
       });
 
-      // 临时调整 SVG 位置到视口内以便捕获
+      // 保存原始样式
+      const canvasContent = element.querySelector('.canvas-content') as HTMLElement;
       const svgLayer = element.querySelector('.connections-layer') as HTMLElement;
+      const originalTransform = canvasContent?.style.transform;
       const originalSvgTop = svgLayer?.style.top;
       const originalSvgLeft = svgLayer?.style.left;
+
+      // 重置画布变换为无缩放、无平移
+      if (canvasContent) {
+        canvasContent.style.transform = 'none';
+      }
+
+      // 调整 SVG 位置到原点
       if (svgLayer) {
         svgLayer.style.top = '0';
         svgLayer.style.left = '0';
       }
 
+      // 使用 html2canvas 直接捕获，设置合适的捕获区域
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#f5f5f5',
         logging: false,
-        // 扩大捕获区域以包含整个 SVG
-        x: -2000,
-        y: -2000,
-        width: 4000,
-        height: 4000,
-        windowWidth: 4000,
-        windowHeight: 4000,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
       });
 
-      // 恢复元素可见性和 SVG 位置
-      noExportElements.forEach(el => {
-        (el as HTMLElement).style.visibility = '';
-      });
+      // 恢复原始样式
+      if (canvasContent) {
+        canvasContent.style.transform = originalTransform || '';
+      }
       if (svgLayer) {
         svgLayer.style.top = originalSvgTop || '-2000px';
         svgLayer.style.left = originalSvgLeft || '-2000px';
       }
+      noExportElements.forEach(el => {
+        (el as HTMLElement).style.visibility = '';
+      });
       
       const url = canvas.toDataURL('image/png', 1.0);
       
@@ -89,46 +141,59 @@ export function useExport() {
   };
 
   // 导出为PDF
-  const exportToPDF = async (element: HTMLElement, filename: string = 'mindmap') => {
+  const exportToPDF = async (element: HTMLElement, root: MindMapNode, filename: string = 'mindmap') => {
     try {
+      // 计算节点边界
+      const bounds = calculateNodeBounds(root);
+      
       // 临时隐藏不需要导出的元素
       const noExportElements = element.querySelectorAll('.no-export');
       noExportElements.forEach(el => {
         (el as HTMLElement).style.visibility = 'hidden';
       });
 
-      // 临时调整 SVG 位置到视口内以便捕获
+      // 保存原始样式
+      const canvasContent = element.querySelector('.canvas-content') as HTMLElement;
       const svgLayer = element.querySelector('.connections-layer') as HTMLElement;
+      const originalTransform = canvasContent?.style.transform;
       const originalSvgTop = svgLayer?.style.top;
       const originalSvgLeft = svgLayer?.style.left;
+
+      // 重置画布变换为无缩放、无平移
+      if (canvasContent) {
+        canvasContent.style.transform = 'none';
+      }
+
+      // 调整 SVG 位置到原点
       if (svgLayer) {
         svgLayer.style.top = '0';
         svgLayer.style.left = '0';
       }
 
+      // 使用 html2canvas 直接捕获
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#f5f5f5',
         logging: false,
-        // 扩大捕获区域以包含整个 SVG
-        x: -2000,
-        y: -2000,
-        width: 4000,
-        height: 4000,
-        windowWidth: 4000,
-        windowHeight: 4000,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
       });
 
-      // 恢复元素可见性和 SVG 位置
-      noExportElements.forEach(el => {
-        (el as HTMLElement).style.visibility = '';
-      });
+      // 恢复原始样式
+      if (canvasContent) {
+        canvasContent.style.transform = originalTransform || '';
+      }
       if (svgLayer) {
         svgLayer.style.top = originalSvgTop || '-2000px';
         svgLayer.style.left = originalSvgLeft || '-2000px';
       }
+      noExportElements.forEach(el => {
+        (el as HTMLElement).style.visibility = '';
+      });
       
       const imgData = canvas.toDataURL('image/png');
       
