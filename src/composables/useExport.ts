@@ -1,11 +1,10 @@
 import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import type { MindMapNode, ExportData } from '@/types';
 
 export function useExport() {
   // 计算节点边界框
   const calculateNodeBounds = (root: MindMapNode) => {
-    const padding = 100; // 边距
+    const padding = 100;
     
     let minX = Infinity;
     let maxX = -Infinity;
@@ -55,7 +54,6 @@ export function useExport() {
       link.style.display = 'none';
       document.body.appendChild(link);
       
-      // 使用 setTimeout 确保在 Mac/Firefox 等浏览器中正常工作
       setTimeout(() => {
         link.click();
         setTimeout(() => {
@@ -70,56 +68,153 @@ export function useExport() {
   };
 
   // 导出为PNG
-  const exportToPNG = async (element: HTMLElement, root: MindMapNode, filename: string = 'mindmap') => {
+  const exportToPNG = async (root: MindMapNode, filename: string = 'mindmap') => {
     try {
-      // 计算节点边界
       const bounds = calculateNodeBounds(root);
       
-      // 临时隐藏不需要导出的元素
-      const noExportElements = element.querySelectorAll('.no-export');
-      noExportElements.forEach(el => {
-        (el as HTMLElement).style.visibility = 'hidden';
-      });
-
-      // 保存原始样式
-      const canvasContent = element.querySelector('.canvas-content') as HTMLElement;
-      const originalTransform = canvasContent?.style.transform;
-
-      // 重置画布变换为无缩放、无平移
-      if (canvasContent) {
-        canvasContent.style.transform = 'none';
-      }
-
-      // SVG 默认位置为 (-2000, -2000)，viewBox 为 (-2000 -2000 4000 4000)
-      // 这样 SVG 坐标 (0,0) 对应视觉位置 (0,0)，与节点位置完美对齐
-      // 不需要修改 SVG 的位置和 viewBox，保持原样即可
-
-      // 计算 html2canvas 捕获区域
-      // 需要考虑 SVG 的偏移量 (-2000, -2000)
-      const svgOffset = 2000;
-      const captureX = Math.max(0, bounds.x + svgOffset);
-      const captureY = Math.max(0, bounds.y + svgOffset);
-
-      // 使用 html2canvas 直接捕获，设置合适的捕获区域
-      const canvas = await html2canvas(element, {
+      const exportContainer = document.createElement('div');
+      exportContainer.style.position = 'absolute';
+      exportContainer.style.top = '-9999px';
+      exportContainer.style.left = '-9999px';
+      exportContainer.style.width = `${bounds.width}px`;
+      exportContainer.style.height = `${bounds.height}px`;
+      exportContainer.style.backgroundColor = '#f5f5f5';
+      exportContainer.style.overflow = 'hidden';
+      exportContainer.style.fontFamily = 'Arial, sans-serif';
+      document.body.appendChild(exportContainer);
+      
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', bounds.width.toString());
+      svg.setAttribute('height', bounds.height.toString());
+      svg.style.position = 'absolute';
+      svg.style.top = '0';
+      svg.style.left = '0';
+      svg.setAttribute('viewBox', `0 0 ${bounds.width} ${bounds.height}`);
+      svg.style.pointerEvents = 'none';
+      svg.style.overflow = 'visible';
+      exportContainer.appendChild(svg);
+      
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+      marker.setAttribute('id', 'export-arrowhead');
+      marker.setAttribute('markerWidth', '10');
+      marker.setAttribute('markerHeight', '7');
+      marker.setAttribute('refX', '9');
+      marker.setAttribute('refY', '3.5');
+      marker.setAttribute('orient', 'auto');
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+      polygon.setAttribute('fill', '#999');
+      marker.appendChild(polygon);
+      defs.appendChild(marker);
+      svg.appendChild(defs);
+      
+      const traverse = (node: MindMapNode) => {
+        for (const child of node.children) {
+          if (node.collapsed) continue;
+          
+          const startX = node.x + node.width / 2;
+          const startY = node.y;
+          const endX = child.x - child.width / 2;
+          const endY = child.y;
+          const midX = (startX + endX) / 2;
+          const arrowGap = 8;
+          const endXWithGap = endX - arrowGap;
+          const endYWithGap = endY;
+          
+          const exportStartX = startX - bounds.x;
+          const exportStartY = startY - bounds.y;
+          const exportEndX = endXWithGap - bounds.x;
+          const exportEndY = endYWithGap - bounds.y;
+          const exportMidX = midX - bounds.x;
+          
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', `M ${exportStartX} ${exportStartY} C ${exportMidX} ${exportStartY}, ${exportMidX} ${exportEndY}, ${exportEndX} ${exportEndY}`);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', '#999');
+          path.setAttribute('stroke-width', '1.5');
+          path.setAttribute('marker-end', 'url(#export-arrowhead)');
+          svg.appendChild(path);
+          
+          traverse(child);
+        }
+      };
+      traverse(root);
+      
+      const nodesLayer = document.createElement('div');
+      nodesLayer.style.position = 'absolute';
+      nodesLayer.style.top = '0';
+      nodesLayer.style.left = '0';
+      exportContainer.appendChild(nodesLayer);
+      
+      const traverseNodes = (node: MindMapNode) => {
+        const nodeEl = document.createElement('div');
+        nodeEl.style.position = 'absolute';
+        nodeEl.style.left = `${node.x - bounds.x - node.width / 2}px`;
+        nodeEl.style.top = `${node.y - bounds.y - node.height / 2}px`;
+        nodeEl.style.width = `${node.width}px`;
+        nodeEl.style.height = `${node.height}px`;
+        nodeEl.style.backgroundColor = node.style.backgroundColor;
+        nodeEl.style.color = node.style.textColor;
+        nodeEl.style.border = `${node.style.borderWidth}px solid ${node.style.borderColor}`;
+        nodeEl.style.borderRadius = `${node.style.borderRadius}px`;
+        nodeEl.style.fontSize = `${node.style.fontSize}px`;
+        nodeEl.style.fontWeight = node.style.fontWeight;
+        nodeEl.style.fontFamily = node.style.fontFamily;
+        nodeEl.style.padding = `${node.style.padding}px`;
+        nodeEl.style.display = 'flex';
+        nodeEl.style.alignItems = 'center';
+        nodeEl.style.justifyContent = 'center';
+        nodeEl.style.boxSizing = 'border-box';
+        nodeEl.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        
+        const textSpan = document.createElement('span');
+        textSpan.textContent = node.text;
+        textSpan.style.display = 'block';
+        textSpan.style.overflow = 'hidden';
+        textSpan.style.textOverflow = 'ellipsis';
+        textSpan.style.whiteSpace = 'nowrap';
+        textSpan.style.maxWidth = '200px';
+        nodeEl.appendChild(textSpan);
+        
+        if (node.children.length > 0 && node.collapsed) {
+          const collapseBtn = document.createElement('div');
+          collapseBtn.textContent = '+';
+          collapseBtn.style.position = 'absolute';
+          collapseBtn.style.right = '-12px';
+          collapseBtn.style.top = '50%';
+          collapseBtn.style.transform = 'translateY(-50%)';
+          collapseBtn.style.width = '20px';
+          collapseBtn.style.height = '20px';
+          collapseBtn.style.borderRadius = '50%';
+          collapseBtn.style.background = '#fff';
+          collapseBtn.style.border = '2px solid #1890ff';
+          collapseBtn.style.display = 'flex';
+          collapseBtn.style.alignItems = 'center';
+          collapseBtn.style.justifyContent = 'center';
+          collapseBtn.style.fontSize = '12px';
+          collapseBtn.style.fontWeight = 'bold';
+          collapseBtn.style.color = '#1890ff';
+          nodeEl.appendChild(collapseBtn);
+        }
+        
+        nodesLayer.appendChild(nodeEl);
+        
+        if (!node.collapsed) {
+          node.children.forEach(traverseNodes);
+        }
+      };
+      traverseNodes(root);
+      
+      const canvas = await html2canvas(exportContainer, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#f5f5f5',
         logging: false,
-        x: captureX,
-        y: captureY,
-        width: bounds.width,
-        height: bounds.height,
       });
-
-      // 恢复原始样式
-      if (canvasContent) {
-        canvasContent.style.transform = originalTransform || '';
-      }
-      noExportElements.forEach(el => {
-        (el as HTMLElement).style.visibility = '';
-      });
+      
+      document.body.removeChild(exportContainer);
       
       const url = canvas.toDataURL('image/png', 1.0);
       
@@ -133,88 +228,6 @@ export function useExport() {
       return true;
     } catch (error) {
       console.error('Export to PNG failed:', error);
-      return false;
-    }
-  };
-
-  // 导出为PDF
-  const exportToPDF = async (element: HTMLElement, root: MindMapNode, filename: string = 'mindmap') => {
-    try {
-      // 计算节点边界
-      const bounds = calculateNodeBounds(root);
-      
-      // 临时隐藏不需要导出的元素
-      const noExportElements = element.querySelectorAll('.no-export');
-      noExportElements.forEach(el => {
-        (el as HTMLElement).style.visibility = 'hidden';
-      });
-
-      // 保存原始样式
-      const canvasContent = element.querySelector('.canvas-content') as HTMLElement;
-      const originalTransform = canvasContent?.style.transform;
-
-      // 重置画布变换为无缩放、无平移
-      if (canvasContent) {
-        canvasContent.style.transform = 'none';
-      }
-
-      // SVG 默认位置为 (-2000, -2000)，viewBox 为 (-2000 -2000 4000 4000)
-      // 这样 SVG 坐标 (0,0) 对应视觉位置 (0,0)，与节点位置完美对齐
-      // 不需要修改 SVG 的位置和 viewBox，保持原样即可
-
-      // 计算 html2canvas 捕获区域
-      // 需要考虑 SVG 的偏移量 (-2000, -2000)
-      const svgOffset = 2000;
-      const captureX = Math.max(0, bounds.x + svgOffset);
-      const captureY = Math.max(0, bounds.y + svgOffset);
-
-      // 使用 html2canvas 直接捕获
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#f5f5f5',
-        logging: false,
-        x: captureX,
-        y: captureY,
-        width: bounds.width,
-        height: bounds.height,
-      });
-
-      // 恢复原始样式
-      if (canvasContent) {
-        canvasContent.style.transform = originalTransform || '';
-      }
-      noExportElements.forEach(el => {
-        (el as HTMLElement).style.visibility = '';
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      
-      // 计算PDF尺寸（A4横向）
-      const imgWidth = 297;
-      const pageHeight = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      
-      pdf.save(`${filename}.pdf`);
-      return true;
-    } catch (error) {
-      console.error('Export to PDF failed:', error);
       return false;
     }
   };
@@ -244,7 +257,6 @@ export function useExport() {
   return {
     exportToJSON,
     exportToPNG,
-    exportToPDF,
     importFromJSON,
   };
 }

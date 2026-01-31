@@ -63,10 +63,6 @@
             <span class="icon">🖼️</span>
             <span>导出 PNG</span>
           </div>
-          <div class="export-item" @click="onExport('pdf')">
-            <span class="icon">📄</span>
-            <span>导出 PDF</span>
-          </div>
         </div>
       </div>
       
@@ -99,7 +95,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   new: [];
   import: [file: File];
-  export: [type: 'json' | 'png' | 'pdf'];
+  export: [type: 'json' | 'png'];
   addChild: [];
   addSibling: [];
   delete: [];
@@ -135,11 +131,7 @@ const toggleExportMenu = () => {
   showExportMenu.value = !showExportMenu.value;
 };
 
-const closeExportMenu = () => {
-  showExportMenu.value = false;
-};
-
-const onExport = (type: 'json' | 'png' | 'pdf') => {
+const onExport = (type: 'json' | 'png') => {
   emit('export', type);
   showExportMenu.value = false;
 };

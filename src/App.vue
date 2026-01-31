@@ -14,7 +14,6 @@
 
     <div ref="mainContentRef" class="main-content">
       <MindMapCanvas
-        ref="canvasRef"
         :root="root"
         :selected-node="selectedNode"
         :editing-node="editingNode"
@@ -68,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, nextTick, onMounted } from 'vue';
 import Toolbar from './components/Toolbar.vue';
 import MindMapCanvas from './components/MindMapCanvas.vue';
 import StylePanel from './components/StylePanel.vue';
@@ -77,7 +76,6 @@ import { useKeyboard } from './composables/useKeyboard';
 import { useExport } from './composables/useExport';
 import type { MindMapNode, NodeStyle, CanvasConfig } from './types';
 
-const canvasRef = ref<InstanceType<typeof MindMapCanvas> | null>(null);
 const mainContentRef = ref<HTMLElement | null>(null);
 const showStylePanel = ref(false);
 
@@ -108,7 +106,7 @@ const {
   updateCanvasConfig,
 } = useMindMap();
 
-const { exportToJSON, exportToPNG, exportToPDF, importFromJSON } = useExport();
+const { exportToJSON, exportToPNG, importFromJSON } = useExport();
 
 // 键盘事件处理
 useKeyboard({
@@ -187,20 +185,13 @@ const handleImport = async (file: File) => {
   }
 };
 
-const handleExport = async (type: 'json' | 'png' | 'pdf') => {
+const handleExport = async (type: 'json' | 'png') => {
   switch (type) {
     case 'json':
       exportToJSON(exportData());
       break;
     case 'png':
-      if (canvasRef.value?.$el) {
-        await exportToPNG(canvasRef.value.$el as HTMLElement, root.value);
-      }
-      break;
-    case 'pdf':
-      if (canvasRef.value?.$el) {
-        await exportToPDF(canvasRef.value.$el as HTMLElement, root.value);
-      }
+      await exportToPNG(root.value);
       break;
   }
 };
