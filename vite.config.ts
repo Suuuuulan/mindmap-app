@@ -4,7 +4,6 @@ import { resolve } from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
-  root: 'c:/Users/Administrator/Desktop/mindmap/mindmap-app',
   plugins: [vue()],
   resolve: {
     alias: {

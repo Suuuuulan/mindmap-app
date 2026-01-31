@@ -83,21 +83,22 @@ export function useExport() {
 
       // 保存原始样式
       const canvasContent = element.querySelector('.canvas-content') as HTMLElement;
-      const svgLayer = element.querySelector('.connections-layer') as HTMLElement;
       const originalTransform = canvasContent?.style.transform;
-      const originalSvgTop = svgLayer?.style.top;
-      const originalSvgLeft = svgLayer?.style.left;
 
       // 重置画布变换为无缩放、无平移
       if (canvasContent) {
         canvasContent.style.transform = 'none';
       }
 
-      // 调整 SVG 位置到原点
-      if (svgLayer) {
-        svgLayer.style.top = '0';
-        svgLayer.style.left = '0';
-      }
+      // SVG 默认位置为 (-2000, -2000)，viewBox 为 (-2000 -2000 4000 4000)
+      // 这样 SVG 坐标 (0,0) 对应视觉位置 (0,0)，与节点位置完美对齐
+      // 不需要修改 SVG 的位置和 viewBox，保持原样即可
+
+      // 计算 html2canvas 捕获区域
+      // 需要考虑 SVG 的偏移量 (-2000, -2000)
+      const svgOffset = 2000;
+      const captureX = Math.max(0, bounds.x + svgOffset);
+      const captureY = Math.max(0, bounds.y + svgOffset);
 
       // 使用 html2canvas 直接捕获，设置合适的捕获区域
       const canvas = await html2canvas(element, {
@@ -106,8 +107,8 @@ export function useExport() {
         allowTaint: true,
         backgroundColor: '#f5f5f5',
         logging: false,
-        x: bounds.x,
-        y: bounds.y,
+        x: captureX,
+        y: captureY,
         width: bounds.width,
         height: bounds.height,
       });
@@ -115,10 +116,6 @@ export function useExport() {
       // 恢复原始样式
       if (canvasContent) {
         canvasContent.style.transform = originalTransform || '';
-      }
-      if (svgLayer) {
-        svgLayer.style.top = originalSvgTop || '-2000px';
-        svgLayer.style.left = originalSvgLeft || '-2000px';
       }
       noExportElements.forEach(el => {
         (el as HTMLElement).style.visibility = '';
@@ -154,21 +151,22 @@ export function useExport() {
 
       // 保存原始样式
       const canvasContent = element.querySelector('.canvas-content') as HTMLElement;
-      const svgLayer = element.querySelector('.connections-layer') as HTMLElement;
       const originalTransform = canvasContent?.style.transform;
-      const originalSvgTop = svgLayer?.style.top;
-      const originalSvgLeft = svgLayer?.style.left;
 
       // 重置画布变换为无缩放、无平移
       if (canvasContent) {
         canvasContent.style.transform = 'none';
       }
 
-      // 调整 SVG 位置到原点
-      if (svgLayer) {
-        svgLayer.style.top = '0';
-        svgLayer.style.left = '0';
-      }
+      // SVG 默认位置为 (-2000, -2000)，viewBox 为 (-2000 -2000 4000 4000)
+      // 这样 SVG 坐标 (0,0) 对应视觉位置 (0,0)，与节点位置完美对齐
+      // 不需要修改 SVG 的位置和 viewBox，保持原样即可
+
+      // 计算 html2canvas 捕获区域
+      // 需要考虑 SVG 的偏移量 (-2000, -2000)
+      const svgOffset = 2000;
+      const captureX = Math.max(0, bounds.x + svgOffset);
+      const captureY = Math.max(0, bounds.y + svgOffset);
 
       // 使用 html2canvas 直接捕获
       const canvas = await html2canvas(element, {
@@ -177,8 +175,8 @@ export function useExport() {
         allowTaint: true,
         backgroundColor: '#f5f5f5',
         logging: false,
-        x: bounds.x,
-        y: bounds.y,
+        x: captureX,
+        y: captureY,
         width: bounds.width,
         height: bounds.height,
       });
@@ -186,10 +184,6 @@ export function useExport() {
       // 恢复原始样式
       if (canvasContent) {
         canvasContent.style.transform = originalTransform || '';
-      }
-      if (svgLayer) {
-        svgLayer.style.top = originalSvgTop || '-2000px';
-        svgLayer.style.left = originalSvgLeft || '-2000px';
       }
       noExportElements.forEach(el => {
         (el as HTMLElement).style.visibility = '';
