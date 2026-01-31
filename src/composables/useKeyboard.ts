@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref, watch, type Ref } from 'vue';
+import { onMounted, onUnmounted, type Ref } from 'vue';
 import type { MindMapNode } from '@/types';
 
 export interface KeyboardOptions {

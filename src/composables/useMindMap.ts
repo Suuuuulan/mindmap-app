@@ -53,7 +53,6 @@ export function useMindMap() {
   // 拖拽状态
   const isDragging = ref(false);
   const dragNode = ref<MindMapNode | null>(null);
-  const dragStartPos = reactive({ x: 0, y: 0, nodeX: 0, nodeY: 0 });
   
   // 所有节点列表（用于遍历）
   const allNodes = computed(() => {
@@ -159,17 +158,19 @@ export function useMindMap() {
       
       let currentY = startY;
       const childYs: number[] = [];
-      
+
       for (const child of node.children) {
         if (!child.collapsed) {
           const endY = layoutNode(child, currentY);
-          childYs.push(child.y);
+          childYs.push(child.y as number);
           currentY = endY;
         }
       }
-      
+
       if (childYs.length > 0) {
-        node.y = (childYs[0] + childYs[childYs.length - 1]) / 2;
+        const first = childYs[0];
+        const last = childYs[childYs.length - 1];
+        node.y = (first! + last!) / 2;
       } else {
         node.y = startY;
       }
